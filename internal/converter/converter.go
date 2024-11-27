@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"path"
 	"regexp"
 	"strings"
@@ -18,7 +17,7 @@ import (
 	descriptor "google.golang.org/protobuf/types/descriptorpb"
 	plugin "google.golang.org/protobuf/types/pluginpb"
 
-	protoc_gen_jsonschema "github.com/chrusty/protoc-gen-jsonschema"
+	protoc_gen_jsonschema "github.com/qqstream/protoc-gen-jsonschema"
 )
 
 const (
@@ -60,6 +59,7 @@ type ConverterFlags struct {
 	UseJSONFieldnamesOnly        bool
 	UseProtoAndJSONFieldNames    bool
 	TypeNamesWithNoPackage       bool
+	NoBaseJsonFile               bool
 }
 
 // New returns a configured *Converter (defaulting to draft-04 version):
@@ -77,7 +77,7 @@ func New(logger *logrus.Logger) *Converter {
 // ConvertFrom tells the convert to work on the given input:
 func (c *Converter) ConvertFrom(rd io.Reader) (*plugin.CodeGeneratorResponse, error) {
 	c.logger.Debug("Reading code generation request")
-	input, err := ioutil.ReadAll(rd)
+	input, err := io.ReadAll(rd)
 	if err != nil {
 		c.logger.WithError(err).Error("Failed to read request")
 		return nil, err
@@ -121,6 +121,8 @@ func (c *Converter) parseGeneratorParameters(parameters string) {
 			c.Flags.UseProtoAndJSONFieldNames = true
 		case "type_names_with_no_package":
 			c.Flags.TypeNamesWithNoPackage = true
+		case "skip_base_json_file":
+			c.Flags.NoBaseJsonFile = true
 		}
 
 		// look for specific message targets
@@ -350,6 +352,18 @@ func (c *Converter) convertFile(file *descriptor.FileDescriptorProto, fileExtens
 		}
 	}
 
+	// Generate a base JSON file, unless the user has requested not to:
+	if !c.Flags.NoBaseJsonFile {
+		baseJsonFile := c.generateBaseFilename(file, fileExtension, file.GetName())
+		c.logger.WithField("proto_filename", protoFileName).WithField("base_file", baseJsonFile).Info("Generating base JSON file")
+		// Add a response:
+		bFile := &plugin.CodeGeneratorResponse_File{
+			Name:    proto.String(baseJsonFile),
+			Content: proto.String("{}"),
+		}
+		response = append(response, bFile)
+	}
+
 	return response, nil
 }
 
@@ -433,6 +447,15 @@ func (c *Converter) convert(request *plugin.CodeGeneratorRequest) (*plugin.CodeG
 }
 
 func (c *Converter) generateSchemaFilename(file *descriptor.FileDescriptorProto, fileExtension, protoName string) string {
+	if c.Flags.PrefixSchemaFilesWithPackage {
+		return fmt.Sprintf("%s/%s.%s", file.GetPackage(), protoName, fileExtension)
+	}
+	return fmt.Sprintf("%s.%s", protoName, fileExtension)
+}
+
+func (c *Converter) generateBaseFilename(file *descriptor.FileDescriptorProto, fileExtension, protoName string) string {
+	extension := path.Ext(protoName)
+	protoName = strings.TrimSuffix(protoName, extension)
 	if c.Flags.PrefixSchemaFilesWithPackage {
 		return fmt.Sprintf("%s/%s.%s", file.GetPackage(), protoName, fileExtension)
 	}

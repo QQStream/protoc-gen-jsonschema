@@ -19,7 +19,7 @@ import (
 	"github.com/qqstream/protoc-gen-jsonschema/internal/converter"
 )
 
-const version = "v1.4.0"
+const version = "v1.4.1"
 
 func init() {
 	versionFlag := flag.Bool("version", false, "prints current version")
