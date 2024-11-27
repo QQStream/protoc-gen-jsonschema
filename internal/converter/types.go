@@ -408,9 +408,9 @@ func (c *Converter) convertMessageType(curPkg *ProtoPackage, msgDesc *descriptor
 	for refmsgDesc, nameWithPackage := range duplicatedMessages {
 		var typeName string
 		if c.Flags.TypeNamesWithNoPackage {
-			typeName = refmsgDesc.GetName()
+			typeName = refmsgDesc.GetName();
 		} else {
-			typeName = nameWithPackage
+			typeName = nameWithPackage;
 		}
 		refType, err := c.recursiveConvertMessageType(curPkg, refmsgDesc, "", duplicatedMessages, true)
 		if err != nil {
@@ -577,9 +577,9 @@ func (c *Converter) recursiveConvertMessageType(curPkg *ProtoPackage, msgDesc *d
 	if nameWithPackage, ok := duplicatedMessages[msgDesc]; ok && !ignoreDuplicatedMessages {
 		var typeName string
 		if c.Flags.TypeNamesWithNoPackage {
-			typeName = msgDesc.GetName()
+			typeName = msgDesc.GetName();
 		} else {
-			typeName = nameWithPackage
+			typeName = nameWithPackage;
 		}
 		return &jsonschema.Type{
 			Ref: fmt.Sprintf("%s%s", c.refPrefix, typeName),
